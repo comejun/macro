@@ -5,6 +5,7 @@
  *   1) 페이지 새로고침
  *   2) 견적 요청 목록 ul이 보일 때까지 대기
  *   3) 상단부터 li 순회 — 유형 p가 "캐시백 요청"이면 다음 li로
+ *      (마지막 li가 캐시백이면 다음 행이 없으므로 "신규 견적 없음"으로 종료)
  *   4) 첫 일반 견적 행의 요청 번호(span)로 직전 주기와 비교
  *   5) 10초 sleep 후 반복
  *
@@ -44,12 +45,17 @@ function sleep(ms) {
 /**
  * 상단부터 li를 순회하며, p가 "캐시백 요청"인 행은 건너뛰고
  * 첫 번째 일반 견적 행의 견적 요청 번호를 반환합니다.
- * @returns {Promise<{ requestNumber: string, skippedCashback: number } | null>}
+ * 캐시백 행이 마지막 li라 다음 행이 없으면 신규 견적 없음으로 처리합니다.
+ *
+ * @returns {Promise<
+ *   | { ok: true; requestNumber: string; skippedCashback: number }
+ *   | { ok: false; reason: "empty-list" | "no-new-quote-after-cashback" | "no-eligible-row" }
+ * >}
  */
 async function pickFirstNonCashbackRequestNumber(driver, logger) {
   const lis = await driver.findElements(selectors.requests.items);
   if (lis.length === 0) {
-    return null;
+    return { ok: false, reason: "empty-list" };
   }
 
   let skippedCashback = 0;
@@ -62,6 +68,15 @@ async function pickFirstNonCashbackRequestNumber(driver, logger) {
 
     if (typeText === CASHBACK_LABEL) {
       skippedCashback += 1;
+      // 마지막 li가 캐시백이면 그 다음 견적 행이 없음 → 신규 견적 없음
+      if (i === lis.length - 1) {
+        logger.info("신규 견적 없음", {
+          reason: "캐시백 요청 행만 있거나 마지막 행이 캐시백이라 처리할 다음 견적이 없음",
+          index: i,
+          skippedCashback,
+        });
+        return { ok: false, reason: "no-new-quote-after-cashback" };
+      }
       logger.info("캐시백 요청 건 건너뜀 — 다음 li 확인", {
         index: i,
         label: typeText,
@@ -81,7 +96,7 @@ async function pickFirstNonCashbackRequestNumber(driver, logger) {
       continue;
     }
 
-    return { requestNumber, skippedCashback };
+    return { ok: true, requestNumber, skippedCashback };
   }
 
   if (skippedCashback > 0) {
@@ -91,7 +106,7 @@ async function pickFirstNonCashbackRequestNumber(driver, logger) {
     });
   }
 
-  return null;
+  return { ok: false, reason: "no-eligible-row" };
 }
 
 async function pollOnce({ driver, logger }) {
@@ -101,13 +116,18 @@ async function pollOnce({ driver, logger }) {
   // ul이 그려질 때까지는 기다리지만, li/span은 없을 수도 있으므로 findElements로 안전 조회.
   await driver.wait(until.elementLocated(selectors.requests.list), LIST_TIMEOUT_MS);
 
-  const picked = await pickFirstNonCashbackRequestNumber(driver, logger);
-  const topRequestNumber = picked?.requestNumber ?? null;
+  const pick = await pickFirstNonCashbackRequestNumber(driver, logger);
 
-  if (!topRequestNumber) {
-    logger.info("견적 요청 없음");
+  if (!pick.ok) {
+    if (pick.reason === "no-new-quote-after-cashback") {
+      // 신규 견적 없음 — pickFirst에서 이미 로그함
+      return;
+    }
+    logger.info("견적 요청 없음", { reason: pick.reason });
     return;
   }
+
+  const { requestNumber: topRequestNumber, skippedCashback } = pick;
 
   if (topRequestNumber === lastRequestNumber) {
     logger.info("견적 요청 변동 없음", { requestNumber: topRequestNumber });
@@ -117,7 +137,7 @@ async function pollOnce({ driver, logger }) {
   logger.info("새 견적 요청 감지", {
     requestNumber: topRequestNumber,
     previous: lastRequestNumber,
-    skippedCashback: picked?.skippedCashback ?? 0,
+    skippedCashback,
   });
   lastRequestNumber = topRequestNumber;
   // TODO: 해당 li 클릭 → 견적 종류·브랜드·차종 분기 → 입력·라디오·버튼 처리 → Slack 알림.
