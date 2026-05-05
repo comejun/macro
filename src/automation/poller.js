@@ -122,7 +122,10 @@ async function pickFirstNonCashbackRequestNumber(driver, logger) {
   return { ok: false, reason: "no-eligible-row" };
 }
 
-/** 한 번의 새로고침·목록 분석·필요 시 상세 진입 및 후속 분기까지 수행 */
+/**
+ * 한 번의 새로고침·목록 분석·필요 시 상세 진입 및 후속 분기까지 수행.
+ * @returns {Promise<{ skipSleep: boolean }>}
+ */
 async function pollOnce({ driver, logger, settings }) {
   logger.info("페이지 새로고침");
   await driver.navigate().refresh();
@@ -135,17 +138,17 @@ async function pollOnce({ driver, logger, settings }) {
   if (!pick.ok) {
     if (pick.reason === "no-new-quote-after-cashback") {
       // 신규 견적 없음 — pickFirst에서 이미 로그함
-      return;
+      return { skipSleep: false };
     }
     logger.info("견적 요청 없음", { reason: pick.reason });
-    return;
+    return { skipSleep: false };
   }
 
   const { requestNumber: topRequestNumber, skippedCashback, targetLi } = pick;
 
   if (topRequestNumber === lastRequestNumber) {
     logger.info("견적 요청 변동 없음", { requestNumber: topRequestNumber });
-    return;
+    return { skipSleep: false };
   }
 
   logger.info("새 견적 요청 감지", {
@@ -155,10 +158,15 @@ async function pollOnce({ driver, logger, settings }) {
   });
 
   await clickQuoteRowAndWaitForDetail(driver, targetLi, logger);
-  const outcome = await runPostDetailQuoteFlow(driver, settings ?? {}, logger);
+  const outcome = await runPostDetailQuoteFlow(driver, settings ?? {}, logger, topRequestNumber);
   // 상세 진입·분기까지 성공한 뒤에만 번호를 기록 → 실패 시 다음 주기에 재시도
   lastRequestNumber = topRequestNumber;
   logger.info("견적 행 처리 분기 완료", { requestNumber: topRequestNumber, outcome });
+  if (outcome === "draft") {
+    logger.info("메시지 전송 완료 후 즉시 다음 견적 확인을 위해 대기 없이 재조회");
+    return { skipSleep: true };
+  }
+  return { skipSleep: false };
 }
 
 /**
@@ -182,7 +190,8 @@ async function start({ driver, logger, settings = {} }) {
   try {
     while (!stopRequested) {
       try {
-        await pollOnce({ driver, logger, settings });
+        const { skipSleep } = await pollOnce({ driver, logger, settings });
+        if (skipSleep) continue;
       } catch (error) {
         if (stopRequested) break;
         logger.error("폴링 중 오류 — 다음 주기에 재시도", {

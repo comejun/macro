@@ -8,6 +8,7 @@ const {
 } = require("./repair-eligibility");
 const { performQuoteCancellation } = require("./cancellation");
 const { performQuoteDraft } = require("./quote-draft");
+const { performQuoteMessaging } = require("./quote-messaging");
 
 /** 로그·Slack 등에 그대로 넣기 좋은 한 줄 요약 */
 const KIND_LABEL_KO = {
@@ -43,9 +44,10 @@ async function safeGetText(driver, locator) {
  * @param {import("selenium-webdriver").WebDriver} driver
  * @param {Record<string, unknown>} settings
  * @param {ReturnType<typeof import("./logger").createLogger>} logger
+ * @param {string | null} [requestNumber] 폴러에서 읽은 번호 — 메시지 단계에 사용
  * @returns {Promise<"cancelled"|"draft">}
  */
-async function runPostDetailQuoteFlow(driver, settings, logger) {
+async function runPostDetailQuoteFlow(driver, settings, logger, requestNumber = null) {
   const brandAndModelText = await safeGetText(driver, selectors.detail.brandAndModelLine);
   const repairPartsRaw = await safeGetText(driver, selectors.detail.repairPartsSpan);
 
@@ -82,7 +84,7 @@ async function runPostDetailQuoteFlow(driver, settings, logger) {
   }
 
   logger.info("수리 불가 조건 없음 — 견적 작성 분기");
-  await handleQuoteDraft(driver, logger, settings);
+  await handleQuoteDraft(driver, logger, settings, requestNumber);
   return "draft";
 }
 
@@ -99,9 +101,28 @@ async function handleQuoteCancellation(driver, logger, reasons, summaryLinesKo) 
  * @param {import("selenium-webdriver").WebDriver} driver
  * @param {ReturnType<typeof import("./logger").createLogger>} logger
  * @param {Record<string, unknown>} settings
+ * @param {string | null} [requestNumber] 없으면 메시지 단계 생략
  */
-async function handleQuoteDraft(driver, logger, settings) {
+async function handleQuoteDraft(driver, logger, settings, requestNumber = null) {
+  logger.info("견적 작성+메시지 단계 진입");
   await performQuoteDraft(driver, logger, settings);
+  const rn = requestNumber != null ? String(requestNumber).trim() : "";
+  if (!rn) {
+    logger.warn("견적 요청 번호 없음 — 메시지 전송 단계 생략");
+    logger.info("견적 작성+메시지 단계 종료 (메시지 생략)");
+    return;
+  }
+  try {
+    logger.info("메시지 전송 단계 호출", { requestNumber: rn });
+    await performQuoteMessaging(driver, logger, rn, settings);
+    logger.info("메시지 전송 단계 완료", { requestNumber: rn });
+  } catch (err) {
+    logger.warn("메시지 전송 단계 실패", {
+      requestNumber: rn,
+      message: err instanceof Error ? err.message : String(err),
+    });
+  }
+  logger.info("견적 작성+메시지 단계 종료");
 }
 
 module.exports = {

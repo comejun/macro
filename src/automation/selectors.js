@@ -10,6 +10,21 @@ const MAIN_COL_CSS =
 // 견적 요청 목록 ul. Tailwind `s:min-w-360` 등은 `\:` 로 이스케이프합니다.
 const REQUEST_LIST_CSS = `${MAIN_COL_CSS} > div > section > section > section > ul`;
 
+/** 메시지 화면 진입 — 상단 네비 두 번째 탭의 span (검색 전 클릭) */
+const MESSAGES_HEADER_NAV_SECOND_TAB_SPAN_CSS = `${MAIN_COL_CSS} > div > section > section > div.flex.z-20.sticky.top-0.bg-white.gap-x-7.px-4.s\\:px-5.border-b.border-b-blue-gray-200 > a:nth-child(2) > span`;
+/** 메시지 검색 — 견적 요청 번호 입력란 */
+const MESSAGES_SEARCH_FORM_INPUT_CSS = `${MAIN_COL_CSS} > div > section > div > form > input`;
+/** 메시지 단계 진입 전 표시/소멸 확인용 진행 상태 p */
+const MESSAGES_PRE_ENTRY_TRANSIENT_STATUS_P_CSS = "ol > li > div > div > div > p";
+/** 요청 번호 일치 li 진입 후 하단 sticky 영역의 링크 버튼(a > button) */
+const MESSAGES_THREAD_OPEN_LINK_BUTTON_CSS = `${MAIN_COL_CSS} > div > div > div > div.sticky.left-0.bottom-0.bg-white.py-3.border-t.border-blue-gray-200.hidden.s\\:block > div > div.flex.gap-x-2 > a > button`;
+/** 대화 페이지 하단 입력 영역 textarea */
+const MESSAGES_CHAT_TEXTAREA_CSS = `${MAIN_COL_CSS} > div > div > div > div.sticky.bottom-0 > form > div > textarea`;
+/** 대화 페이지 하단 전송 버튼 (`textarea` 우측/하단 form 내부 button) */
+const MESSAGES_CHAT_SEND_BUTTON_CSS = `${MAIN_COL_CSS} > div > div > div > div.sticky.bottom-0 > form > div > button`;
+/** 메시지 전송 후 신규 견적 확인 화면으로 복귀하는 상단 첫 메뉴 a */
+const MESSAGES_RETURN_TO_NEW_REQUESTS_LINK_CSS = "#root > main > header > div > div > div.h-full.flex.items-center.gap-x-10 > ul > li:nth-child(1) > a";
+
 /** 상세 스크롤 영역 (차량 정보 + 견적 작성 폼의 부모) */
 const DETAIL_SCROLL_CSS =
    `${MAIN_COL_CSS} > div > div > div > div.w-full.overflow-y-scroll.s\\:h-screen`;
@@ -49,6 +64,40 @@ const QUOTE_PART_PARTS_ROW_CONFIRM_BTN_RELATIVE =
 
 /** 견적 폼 하단(mt-10) — 부위 등급 입력란이 들어 있는 래퍼 div (`… > div > input`) */
 const QUOTE_FORM_TIER_INPUT_WRAPPER_CSS = `${DETAIL_QUOTE_FORM_CSS} > div.flex.mt-10.justify-between.items-center > div.flex.gap-x-2 > div > div`;
+/** 등급(개수) 입력 후 클릭하는 버튼 — form 여섯 번째 블록 내 네 번째 버튼 */
+const QUOTE_FORM_AFTER_TIER_FOURTH_BUTTON_CSS = `${DETAIL_QUOTE_FORM_CSS} > div:nth-child(6) > div.flex.items-center.flex-wrap.w-full.gap-2.mt-2 > button:nth-child(4)`;
+/** 견적 폼 일곱 번째 블록 헤더 줄의 버튼 — 클릭 시 Radix 모달 오픈 */
+const QUOTE_FORM_BLOCK7_HEADER_BTN_CSS = `${DETAIL_QUOTE_FORM_CSS} > div:nth-child(7) > div.w-full.flex.justify-between.items-center.mb-4 > button`;
+
+/** 다섯 번째 블록 내 라디오 2열 카드 (`border-blue-gray-200` 박스) */
+const QUOTE_FORM_BLOCK5_RADIO_CARD_CSS = `${DETAIL_QUOTE_FORM_CSS} > div:nth-child(5) > div.border.border-blue-gray-200.flex.px-5.py-6.rounded-xl.mt-4`;
+/**
+ * 라디오 그룹 A — 좌측 칼럼(`pr-5`·세로 구분선).
+ * 컨테이너 직계 첫 div → 그 안 두 번째 div → 첫 번째 label.
+ */
+const QUOTE_FORM_RADIO_GROUP_A_LABEL_CSS = `${QUOTE_FORM_BLOCK5_RADIO_CARD_CSS} > div.flex-1.pr-5.border-r.border-blue-gray-100 > div:nth-child(1) > div:nth-child(2) > label:nth-child(1)`;
+/**
+ * 라디오 그룹 C — 좌측 칼럼(`pr-5`) 내 두 번째 직계 div → 그 안 두 번째 div → 첫 label.
+ */
+const QUOTE_FORM_RADIO_GROUP_C_LABEL_CSS = `${QUOTE_FORM_BLOCK5_RADIO_CARD_CSS} > div.flex-1.pr-5.border-r.border-blue-gray-100 > div:nth-child(2) > div:nth-child(2) > label:nth-child(1)`;
+/**
+ * 라디오 그룹 B — 우측 칼럼(`pl-5`).
+ * 동일 깊이 `… > div:nth-child(1) > div:nth-child(2) > label:nth-child(n)` — 부위 `li` 개수로 n 이 1 또는 2.
+ */
+const QUOTE_FORM_RADIO_GROUP_B_LABEL_CSS = (labelNth1Based) =>
+   `${QUOTE_FORM_BLOCK5_RADIO_CARD_CSS} > div.flex-1.pl-5 > div:nth-child(1) > div:nth-child(2) > label:nth-child(${labelNth1Based})`;
+
+/**
+ * 상세 하단 sticky 바(`hidden s:block`) — 견적 발송 트리거(주색 버튼).
+ * 뷰포트가 `s` 브레이크포인트 미만이면 숨겨져 자동화가 실패할 수 있습니다.
+ */
+const QUOTE_SUBMIT_STICKY_PRIMARY_BTN_CSS = `${MAIN_COL_CSS} > div > div > div > div.sticky.left-0.bottom-0.bg-white.py-3.border-t.border-blue-gray-200.hidden.s\\:block > div > div.flex.gap-x-2 > button.flex.justify-center.items-center.rounded-lg.outline-none.font-bold.h-13.px-5.bg-primary-500.text-white.hover\\:bg-primary-600.disabled\\:bg-blue-gray-100.disabled\\:text-blue-gray-300.active\\:bg-primary-700`;
+/**
+ * 발송 확인 Radix 모달 하단 푸터 주 버튼 — `#radix-:r??:` 는 세션마다 변함.
+ * 경로: `radix > div > div.fixed.bottom-0.left-0…rounded-2xl… > button.bg-primary-500`
+ */
+const RADIX_QUOTE_SUBMIT_CONFIRM_FOOTER_BTN_XPATH =
+   "//*[starts-with(@id,'radix-')]/div/div[contains(@class,'fixed')][contains(@class,'bottom-0')][contains(@class,'left-0')][contains(@class,'rounded-2xl')]/button[contains(@class,'bg-primary-500')]";
 
 /** 상세 우측 패널 — 브랜드·차종이 적힌 한 줄 (p) */
 const DETAIL_BRAND_MODEL_P_CSS = `${DETAIL_SCROLL_CSS} > div > section > section > div.flex.justify-between.items-start > div.w-\\[680px\\] > section > p`;
@@ -93,6 +142,9 @@ const CANCEL_FOOTER_SUBMIT_CSS = `${MAIN_COL_CSS} > footer > div > button`;
 const MODAL_CONFIRM_PRIMARY_BTN_CSS = `${RADIX_FINAL_CONFIRM_CSS} > div > button.flex.justify-center.items-center.rounded-lg.outline-none.font-bold.h-12.px-5.bg-primary-500.text-white.hover\\:bg-primary-600.disabled\\:bg-blue-gray-100.disabled\\:text-blue-gray-300.active\\:bg-primary-700.flex-1.s\\:flex-initial`;
 
 module.exports = {
+   /** 라디오 그룹 B — `label:nth-child(1|2)` (부위 `li` 개수 분기) */
+   quoteFormRadioGroupBLabelByIndex: (labelNth1Based) =>
+      By.css(QUOTE_FORM_RADIO_GROUP_B_LABEL_CSS(labelNth1Based)),
    login: {
       id: By.css('input[name="loginId"]'),
       /** 속성 선택 시 반드시 대괄호: `[aria-label="…"]` */
@@ -134,12 +186,39 @@ module.exports = {
         QUOTE_PART_PARTS_ROW_CONFIRM_BTN_RELATIVE,
       /** 부위 등급(react-aria 등) 입력 래퍼 — 내부 `input` 조회 */
       quoteFormTierInputWrapper: By.css(QUOTE_FORM_TIER_INPUT_WRAPPER_CSS),
+      /** 등급 입력 직후 누르는 버튼(`button:nth-child(4)`) */
+      quoteFormAfterTierFourthButton: By.css(QUOTE_FORM_AFTER_TIER_FOURTH_BUTTON_CSS),
+      quoteFormBlock7HeaderButton: By.css(QUOTE_FORM_BLOCK7_HEADER_BTN_CSS),
+      /** 견적 폼 라디오 그룹 A (좌측 칼럼) 고정 라벨 */
+      quoteFormRadioGroupALabel: By.css(QUOTE_FORM_RADIO_GROUP_A_LABEL_CSS),
+      /** 견적 폼 라디오 그룹 C (좌측 칼럼·두 번째 스택) 고정 라벨 */
+      quoteFormRadioGroupCLabel: By.css(QUOTE_FORM_RADIO_GROUP_C_LABEL_CSS),
       /** 브랜드 + 차종 텍스트 */
       brandAndModelLine: By.css(DETAIL_BRAND_MODEL_P_CSS),
       /** 보험/비보험 구분 텍스트 span */
       quoteInsuranceCategorySpan: By.css(DETAIL_QUOTE_INSURANCE_CATEGORY_SPAN_CSS),
       /** 수리 부위 (쉼표 구분) */
       repairPartsSpan: By.css(DETAIL_REPAIR_PARTS_SPAN_CSS),
+      /** 견적 작성 완료 후 하단 sticky 발송 버튼 */
+      quoteSubmitStickyPrimaryButton: By.css(QUOTE_SUBMIT_STICKY_PRIMARY_BTN_CSS),
+      /** 발송 확인 Radix 모달 하단 주 버튼(id 가변 → XPath) */
+      radixQuoteSubmitConfirmFooterButton: By.xpath(RADIX_QUOTE_SUBMIT_CONFIRM_FOOTER_BTN_XPATH),
+   },
+   /** 견적 발송 후 스레드 검색·진입 (목록 ul 구조는 `requests.list` 와 동일) */
+   messages: {
+      /** 상단 네비 `a:nth-child(2)` 안 레이블 span — 메시지 등 두 번째 탭 */
+      headerSecondTabSpan: By.css(MESSAGES_HEADER_NAV_SECOND_TAB_SPAN_CSS),
+      searchFormInput: By.css(MESSAGES_SEARCH_FORM_INPUT_CSS),
+      /** 생성 후 사라지는 진행 상태 p (`ol > li > div > div > div > p`) */
+      preEntryTransientStatusP: By.css(MESSAGES_PRE_ENTRY_TRANSIENT_STATUS_P_CSS),
+      /** 요청 번호 일치 행 클릭 뒤 다음 화면으로 이동하는 링크 버튼 */
+      threadOpenLinkButton: By.css(MESSAGES_THREAD_OPEN_LINK_BUTTON_CSS),
+      /** 대화창 메시지 입력 textarea */
+      chatTextarea: By.css(MESSAGES_CHAT_TEXTAREA_CSS),
+      /** 대화창 전송 버튼 */
+      chatSendButton: By.css(MESSAGES_CHAT_SEND_BUTTON_CSS),
+      /** 상단 첫 메뉴(신규 견적 화면 복귀) */
+      returnToNewRequestsLink: By.css(MESSAGES_RETURN_TO_NEW_REQUESTS_LINK_CSS),
    },
    /** 견적 취소 마법사 (차량 정보 → 사유 → 확인 모달) */
    cancellation: {

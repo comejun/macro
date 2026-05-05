@@ -3,7 +3,7 @@
  */
 const { By, until } = require("selenium-webdriver");
 const selectors = require("./selectors");
-const { DEFAULT_TIMEOUT_MS, typeIntoElement } = require("./dom");
+const { DEFAULT_TIMEOUT_MS, typeIntoElement, click } = require("./dom");
 const { parseCsvList } = require("./repair-eligibility");
 
 /** 한 번에 처리할 최대 삭제 시도 — 무한 루프 방지 */
@@ -247,7 +247,8 @@ async function typeTierInputInQuoteFormFooter(driver, value, timeoutMs) {
 }
 
 /**
- * `form > div:nth-child(4) > ul` 의 직계 `li` 개수 로그 후, 등급 숫자를 폼 하단 입력에 반영합니다.
+ * `form > div:nth-child(4) > ul` 의 직계 `li` 개수 로그 후, 등급 숫자를 폼 하단 입력에 반영하고
+ * 이어서 `form > div:nth-child(6) … button:nth-child(4)` 를 클릭합니다.
  *
  * @param {import("selenium-webdriver").WebDriver} driver
  * @param {ReturnType<typeof import("./logger").createLogger>} logger
@@ -275,6 +276,22 @@ async function logPartRowCountAndFillTierInput(driver, logger, ulLoc) {
     );
     await driver.sleep(350);
     await typeTierInputInQuoteFormFooter(driver, tierVal, DEFAULT_TIMEOUT_MS);
+
+    /* 등급(개수) 입력 후 동일 폼 블록의 네 번째 버튼 */
+    try {
+      const followLoc = selectors.detail.quoteFormAfterTierFourthButton;
+      const btnEl = await driver.wait(until.elementLocated(followLoc), DEFAULT_TIMEOUT_MS);
+      await driver.executeScript(
+        "arguments[0].scrollIntoView({block:'center',inline:'nearest'});",
+        btnEl,
+      );
+      await driver.sleep(200);
+      await click(driver, followLoc, { timeout: DEFAULT_TIMEOUT_MS });
+    } catch (btnErr) {
+      logger.warn("견적 작성 — 등급 입력 후 후속 버튼 클릭 실패", {
+        message: btnErr instanceof Error ? btnErr.message : String(btnErr),
+      });
+    }
   } catch (err) {
     logger.warn("견적 작성 — 부위 등급 입력 실패", {
       partLiCount,
@@ -355,6 +372,218 @@ async function runPartsTextStepAfterPrice(
  * @param {ReturnType<typeof import("./logger").createLogger>} logger
  * @param {number} timeoutMs
  */
+/**
+ * Radix 모달(`#radix-:r90:` 등 id 가변) 안 `section > ul > li > p` 중 첫 번째 표시 항목 클릭.
+ *
+ * @param {import("selenium-webdriver").WebDriver} driver
+ * @param {number} timeoutMs
+ */
+async function waitAndClickRadixModalSectionListFirstP(driver, timeoutMs) {
+  const xpath = By.xpath("//*[starts-with(@id,'radix-')]/section/ul/li/p");
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline) {
+    const els = await driver.findElements(xpath);
+    for (const el of els) {
+      try {
+        if (!(await el.isDisplayed())) continue;
+        await driver.executeScript(
+          "arguments[0].scrollIntoView({block:'center',inline:'nearest'});",
+          el,
+        );
+        await driver.sleep(100);
+        try {
+          await el.click();
+        } catch {
+          await driver.executeScript("arguments[0].click();", el);
+        }
+        return;
+      } catch {
+        /* stale */
+      }
+    }
+    await driver.sleep(120);
+  }
+  throw new Error("Radix 모달 내 section/ul/li/p 를 찾지 못했습니다.");
+}
+
+/**
+ * 폼 7블록 헤더 버튼으로 모달을 연 뒤, 목록 첫 `p` 텍스트 행을 클릭합니다.
+ *
+ * @param {import("selenium-webdriver").WebDriver} driver
+ */
+async function openQuoteMemoModalAndClickRadixListFirstP(driver) {
+  const btnLoc = selectors.detail.quoteFormBlock7HeaderButton;
+  const scrollEl = await driver.findElement(selectors.detail.scrollContainer);
+  await driver.executeScript(
+    "arguments[0].scrollTop = arguments[0].scrollHeight",
+    scrollEl,
+  );
+  await driver.sleep(250);
+
+  const btnEl = await driver.wait(until.elementLocated(btnLoc), DEFAULT_TIMEOUT_MS);
+  await driver.executeScript(
+    "arguments[0].scrollIntoView({block:'center',inline:'nearest'});",
+    btnEl,
+  );
+  await driver.sleep(200);
+  await click(driver, btnLoc, { timeout: DEFAULT_TIMEOUT_MS });
+
+  await waitAndClickRadixModalSectionListFirstP(driver, DEFAULT_TIMEOUT_MS);
+}
+
+/**
+ * 주어진 locator 로 요소가 잡힐 때까지 재시도하며 스크롤 후 클릭합니다.
+ *
+ * @param {import("selenium-webdriver").WebDriver} driver
+ * @param {import("selenium-webdriver").Locator} locator
+ * @param {number} timeoutMs
+ * @param {string} notFoundMessage
+ */
+async function clickLocatedElementWithRetries(driver, locator, timeoutMs, notFoundMessage) {
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline) {
+    const els = await driver.findElements(locator);
+    for (const el of els) {
+      try {
+        await driver.executeScript(
+          "arguments[0].scrollIntoView({block:'center',inline:'nearest'});",
+          el,
+        );
+        await driver.sleep(100);
+        let visible = false;
+        try {
+          visible = await el.isDisplayed();
+        } catch {
+          visible = false;
+        }
+        if (visible) {
+          try {
+            await el.click();
+          } catch {
+            await driver.executeScript("arguments[0].click();", el);
+          }
+          return;
+        }
+        await driver.executeScript("arguments[0].click();", el);
+        return;
+      } catch {
+        /* stale */
+      }
+    }
+    await driver.sleep(120);
+  }
+  throw new Error(notFoundMessage);
+}
+
+/**
+ * 견적 폼 하단 라디오 3그룹 선택.
+ * - 그룹 A: `div:nth-child(5)` 카드 좌측 칼럼(`… pr-5 …`) — 첫 div → 두 번째 div → 첫 label (고정).
+ * - 그룹 B: 동일 카드 우측(`… pl-5`) — 부위 `ul > li` 가 2개 이상이면 두 번째 div 안 첫 label, 1개면 두 번째 label.
+ * - 그룹 C: 좌측 칼럼(`… pr-5 …`) — 두 번째 직계 div → 두 번째 div → 첫 label (고정).
+ *
+ * @param {import("selenium-webdriver").WebDriver} driver
+ * @param {ReturnType<typeof import("./logger").createLogger>} logger
+ */
+async function selectQuoteFormRadios(driver, logger) {
+  const ulLoc = selectors.detail.quoteFormPartsListRepairMethod;
+  await driver.wait(until.elementLocated(ulLoc), DEFAULT_TIMEOUT_MS);
+  const ul = await driver.findElement(ulLoc);
+  const partLiCount = (await ul.findElements(By.xpath("./li"))).length;
+
+  /** 우측 칼럼: `li` 2개 이상 → label 1, 그 외 → label 2 */
+  const groupBLabelNth = partLiCount >= 2 ? 1 : 2;
+
+  logger.info("견적 작성 — 라디오 선택", {
+    partLiCount,
+    groupBLabelNth,
+  });
+
+  await clickLocatedElementWithRetries(
+    driver,
+    selectors.detail.quoteFormRadioGroupALabel,
+    DEFAULT_TIMEOUT_MS,
+    "견적 라디오 그룹 A 라벨을 찾지 못했습니다.",
+  );
+  await driver.sleep(150);
+
+  await clickLocatedElementWithRetries(
+    driver,
+    selectors.quoteFormRadioGroupBLabelByIndex(groupBLabelNth),
+    DEFAULT_TIMEOUT_MS,
+    "견적 라디오 그룹 B 라벨을 찾지 못했습니다.",
+  );
+  await driver.sleep(150);
+
+  await clickLocatedElementWithRetries(
+    driver,
+    selectors.detail.quoteFormRadioGroupCLabel,
+    DEFAULT_TIMEOUT_MS,
+    "견적 라디오 그룹 C 라벨을 찾지 못했습니다.",
+  );
+}
+
+/**
+ * 발송 확인 Radix 모달(`radix-:r??:`) 하단 고정 푸터의 주 버튼 클릭.
+ * 동시에 열린 다른 radix 가 있으면 가장 나중에 등장한 매칭 버튼을 고릅니다.
+ *
+ * @param {import("selenium-webdriver").WebDriver} driver
+ * @param {number} timeoutMs
+ */
+async function waitAndClickRadixQuoteSubmitConfirmFooter(driver, timeoutMs) {
+  const locator = selectors.detail.radixQuoteSubmitConfirmFooterButton;
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline) {
+    const els = await driver.findElements(locator);
+    for (let i = els.length - 1; i >= 0; i -= 1) {
+      const el = els[i];
+      try {
+        if (!(await el.isDisplayed())) continue;
+        await driver.executeScript(
+          "arguments[0].scrollIntoView({block:'center',inline:'nearest'});",
+          el,
+        );
+        await driver.sleep(100);
+        try {
+          await el.click();
+        } catch {
+          await driver.executeScript("arguments[0].click();", el);
+        }
+        return;
+      } catch {
+        /* stale */
+      }
+    }
+    await driver.sleep(120);
+  }
+  throw new Error("견적 발송 확인 모달의 주 버튼을 찾지 못했습니다.");
+}
+
+/**
+ * 하단 sticky 발송 버튼 클릭 → 확인 Radix 모달에서 주 버튼 클릭(견적 발송).
+ *
+ * @param {import("selenium-webdriver").WebDriver} driver
+ * @param {ReturnType<typeof import("./logger").createLogger>} logger
+ */
+async function submitQuoteFromStickyBarAndConfirmModal(driver, logger) {
+  logger.info("견적 작성 — 발송 버튼·확인 모달");
+  const scrollEl = await driver.findElement(selectors.detail.scrollContainer);
+  await driver.executeScript(
+    "arguments[0].scrollTop = arguments[0].scrollHeight",
+    scrollEl,
+  );
+  await driver.sleep(250);
+
+  await clickLocatedElementWithRetries(
+    driver,
+    selectors.detail.quoteSubmitStickyPrimaryButton,
+    DEFAULT_TIMEOUT_MS,
+    "견적 하단 고정 발송 버튼을 찾지 못했습니다.",
+  );
+  await driver.sleep(350);
+
+  await waitAndClickRadixQuoteSubmitConfirmFooter(driver, DEFAULT_TIMEOUT_MS);
+}
+
 async function clickRadixRepairMethodFirstPanelDiv(driver, logger, timeoutMs) {
   const xpath = By.xpath("//*[starts-with(@id,'radix-')]/div/div/div[1]");
   const deadline = Date.now() + timeoutMs;
@@ -593,7 +822,7 @@ async function removeQuotePartsMatchingDeleteList(driver, logger, settings) {
 
 /**
  * 수리 가능 견적의 작성 폼 자동화 진입점.
- * 순서: 견적 종류 로그 → deleteParts 행 삭제 → 수리방법/금액/부품/부위등급.
+ * 순서: 견적 종류 로그 → deleteParts 행 삭제 → 수리방법/금액/부품/부위등급 → (7블록)모달 목록 p 클릭 → 라디오 3그룹 → sticky 발송 → 확인 모달 주 버튼.
  *
  * @param {import("selenium-webdriver").WebDriver} driver
  * @param {ReturnType<typeof import("./logger").createLogger>} logger
@@ -601,9 +830,50 @@ async function removeQuotePartsMatchingDeleteList(driver, logger, settings) {
  */
 async function performQuoteDraft(driver, logger, settings) {
   logger.info("견적 작성 분기 시작");
+
+  logger.info("견적 작성 — 단계 1/6: 견적 종류 판별 시작");
   await detectAndLogQuoteKind(driver, logger, settings);
+  logger.info("견적 작성 — 단계 1/6: 견적 종류 판별 완료");
+
+  logger.info("견적 작성 — 단계 2/6: deleteParts 삭제 시작");
   await removeQuotePartsMatchingDeleteList(driver, logger, settings);
+  logger.info("견적 작성 — 단계 2/6: deleteParts 삭제 완료");
+
+  logger.info("견적 작성 — 단계 3/6: 수리방법/금액/부품/등급 입력 시작");
   await fillRepairMethodForAllPartRows(driver, logger, settings);
+  logger.info("견적 작성 — 단계 3/6: 수리방법/금액/부품/등급 입력 완료");
+
+  try {
+    logger.info("견적 작성 — 단계 4/6: 메모·안내 모달 처리 시작");
+    await openQuoteMemoModalAndClickRadixListFirstP(driver);
+    logger.info("견적 작성 — 단계 4/6: 메모·안내 모달 처리 완료");
+  } catch (err) {
+    logger.warn("견적 작성 — 메모·안내 모달 단계 실패", {
+      message: err instanceof Error ? err.message : String(err),
+    });
+  }
+
+  try {
+    logger.info("견적 작성 — 단계 5/6: 라디오 선택 시작");
+    await selectQuoteFormRadios(driver, logger);
+    logger.info("견적 작성 — 단계 5/6: 라디오 선택 완료");
+  } catch (err) {
+    logger.warn("견적 작성 — 라디오 선택 실패", {
+      message: err instanceof Error ? err.message : String(err),
+    });
+  }
+
+  try {
+    logger.info("견적 작성 — 단계 6/6: 발송·확인 모달 처리 시작");
+    await submitQuoteFromStickyBarAndConfirmModal(driver, logger);
+    logger.info("견적 작성 — 단계 6/6: 발송·확인 모달 처리 완료");
+  } catch (err) {
+    logger.warn("견적 작성 — 발송·확인 모달 단계 실패", {
+      message: err instanceof Error ? err.message : String(err),
+    });
+  }
+
+  logger.info("견적 작성 분기 종료");
 }
 
 /** 단위 테스트·외부 모듈에서 일부 함수만 재사용할 때 노출 */
@@ -612,6 +882,7 @@ module.exports = {
   detectAndLogQuoteKind,
   removeQuotePartsMatchingDeleteList,
   fillRepairMethodForAllPartRows,
+  openQuoteMemoModalAndClickRadixListFirstP,
   normalizeDeletePartsSet,
   textAfterFirstNewlineForDeletePartsMatch,
 };
