@@ -880,6 +880,10 @@ async function performQuoteDraft(driver, logger, settings) {
 module.exports = {
   performQuoteDraft,
   detectAndLogQuoteKind,
+  classifyDomesticImportFromBrandLineAndCsv,
+  classifyInsuranceFromSpanText,
+  quoteKindLabelFourWay,
+  repairPriceStringForQuoteKind,
   removeQuotePartsMatchingDeleteList,
   fillRepairMethodForAllPartRows,
   openQuoteMemoModalAndClickRadixListFirstP,

@@ -30,6 +30,13 @@ const store = new Store({
     partsText: "",
     /** 견적 발송 후 안내 등 후속 텍스트 */
     quoteSentFollowUpText: "",
+    /** Slack Incoming Webhook URL (비어 있으면 알림 미전송) */
+    slackWebhookUrl: "",
+    /** 견적 취소 알림용 Slack Incoming Webhook URL */
+    cancellationSlackWebhookUrl: "",
+    /** Slack 알림 템플릿 (`{requestNumber}`, `{quotePageUrl}`, `{brandModelLine}`, `{appliedQuotePriceBasis}` 치환) */
+    slackMessageTemplate:
+      "견적 문자 발송 완료\n요청번호: {requestNumber}\n견적 링크: {quotePageUrl}\n차량 브랜드/차종: {brandModelLine}\n적용한 견적 금액 기준: {appliedQuotePriceBasis}",
   },
 });
 
