@@ -10,8 +10,21 @@
  * 견적 분기 처리 → Slack 알림.
  */
 const { createChromeDriver } = require("./driver");
+const { login } = require("./login");
 
 const LOGIN_URL = "https://partners.cardoc.co.kr/auth/sign-in";
+
+/** 로그인 자격 증명을 검증해 정규화된 객체 또는 null을 돌려줍니다. */
+function normalizeCredentials(settings, logger) {
+  const id = String(settings?.cardocId ?? "").trim();
+  const password = String(settings?.cardocPassword ?? "");
+  if (!id || !password) {
+    const missing = [!id && "아이디", !password && "비밀번호"].filter(Boolean).join(", ");
+    logger.error(`로그인 정보가 비어 있습니다: ${missing}`);
+    return null;
+  }
+  return { id, password };
+}
 
 /** @typedef {"idle"|"starting"|"running"|"stopping"} AutomationState */
 
@@ -59,6 +72,12 @@ async function start({ settings, logger }) {
     logger.warn("이미 실행 중이거나 전이 중이라 시작 요청을 무시합니다.", { state });
     return false;
   }
+
+  const credentials = normalizeCredentials(settings, logger);
+  if (!credentials) {
+    return false;
+  }
+
   setState("starting");
   logger.info("자동화 시작 준비");
 
@@ -69,10 +88,9 @@ async function start({ settings, logger }) {
     await driver.get(LOGIN_URL);
     logger.info("로그인 페이지 이동", { url: LOGIN_URL });
 
-    // TODO: settings.cardocId / cardocPassword 입력 → 로그인 → 메인 진입 →
-    //       10초 간격 새 견적 폴링 루프.
-    void settings;
+    await login(driver, credentials, logger);
 
+    // TODO: 메인 페이지에서 10초 간격 새 견적 폴링 루프 → 분기 처리 → Slack 알림.
     setState("running");
     logger.info("자동화 실행 상태로 전환됨");
     return true;

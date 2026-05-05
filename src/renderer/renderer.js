@@ -20,6 +20,7 @@ const PART_LABELS = [
   "조수석 스텝",
   "조수석 후도어",
   "조수석 후펜더",
+  "기타",
 ];
 
 const SAVE_DEBOUNCE_MS = 250;
