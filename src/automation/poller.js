@@ -7,7 +7,8 @@
  *   3) 상단부터 li 순회 — 유형 p가 "캐시백 요청"이면 다음 li로
  *      (마지막 li가 캐시백이면 다음 행이 없으므로 "신규 견적 없음"으로 종료)
  *   4) 첫 일반 견적 행의 요청 번호(span)로 직전 주기와 비교
- *   5) 10초 sleep 후 반복
+ *   5) 신규 견적이면 해당 li 클릭 → 상세(차량 정보·견적 폼) 로드 확인 후 처리 준비
+ *   6) 10초 sleep 후 반복
  *
  * 중단:
  *   외부에서 requestStop()을 호출하면 sleep을 즉시 깨우고 다음 루프 검사 지점에서
@@ -16,6 +17,7 @@
  */
 const { until } = require("selenium-webdriver");
 const selectors = require("./selectors");
+const { clickQuoteRowAndWaitForDetail } = require("./quote-detail");
 
 const POLL_INTERVAL_MS = 10_000;
 const LIST_TIMEOUT_MS = 10_000;
@@ -48,7 +50,12 @@ function sleep(ms) {
  * 캐시백 행이 마지막 li라 다음 행이 없으면 신규 견적 없음으로 처리합니다.
  *
  * @returns {Promise<
- *   | { ok: true; requestNumber: string; skippedCashback: number }
+ *   | {
+ *       ok: true;
+ *       requestNumber: string;
+ *       skippedCashback: number;
+ *       targetLi: import("selenium-webdriver").WebElement;
+ *     }
  *   | { ok: false; reason: "empty-list" | "no-new-quote-after-cashback" | "no-eligible-row" }
  * >}
  */
@@ -96,7 +103,7 @@ async function pickFirstNonCashbackRequestNumber(driver, logger) {
       continue;
     }
 
-    return { ok: true, requestNumber, skippedCashback };
+    return { ok: true, requestNumber, skippedCashback, targetLi: li };
   }
 
   if (skippedCashback > 0) {
@@ -127,7 +134,7 @@ async function pollOnce({ driver, logger }) {
     return;
   }
 
-  const { requestNumber: topRequestNumber, skippedCashback } = pick;
+  const { requestNumber: topRequestNumber, skippedCashback, targetLi } = pick;
 
   if (topRequestNumber === lastRequestNumber) {
     logger.info("견적 요청 변동 없음", { requestNumber: topRequestNumber });
@@ -139,8 +146,10 @@ async function pollOnce({ driver, logger }) {
     previous: lastRequestNumber,
     skippedCashback,
   });
+
+  await clickQuoteRowAndWaitForDetail(driver, targetLi, logger);
   lastRequestNumber = topRequestNumber;
-  // TODO: 해당 li 클릭 → 견적 종류·브랜드·차종 분기 → 입력·라디오·버튼 처리 → Slack 알림.
+  // TODO: selectors.detail.vehicleSection / quoteForm 기준으로 견적 종류·브랜드·차종 분기 → 입력 → Slack.
 }
 
 /**
