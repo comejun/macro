@@ -5,13 +5,38 @@
   "description": "Cardoc partners automation (Electron)",
   "main": "src/main.js",
   "scripts": {
-    "start": "electron ."
+    "start": "electron .",
+    "dist:win": "electron-builder --win nsis",
+    "dist:win-portable": "electron-builder --win portable"
   },
   "devDependencies": {
-    "electron": "^34.0.0"
+    "electron": "^34.0.0",
+    "electron-builder": "^26.8.1"
   },
   "dependencies": {
     "electron-store": "^8.2.0",
     "selenium-webdriver": "^4.43.0"
+  },
+  "build": {
+    "appId": "com.cardoc.macro",
+    "productName": "Macro",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "src/**/*",
+      "package.json"
+    ],
+    "win": {
+      "target": [
+        "nsis",
+        "portable"
+      ],
+      "artifactName": "${productName}-${version}-${arch}.${ext}"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true
+    }
   }
 }
