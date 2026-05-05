@@ -5,6 +5,7 @@
 const { typeInto, click } = require("./dom");
 const selectors = require("./selectors");
 
+/** 로그인 제출 후 메인 URL로 바뀔 때까지 허용 시간 */
 const LOGIN_TRANSITION_TIMEOUT_MS = 15_000;
 
 /**
