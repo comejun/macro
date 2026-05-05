@@ -4,6 +4,7 @@
  */
 const { until, Key } = require("selenium-webdriver");
 
+/** 입력·클릭 등 요소 대기 기본 타임아웃 */
 const DEFAULT_TIMEOUT_MS = 10_000;
 
 /**

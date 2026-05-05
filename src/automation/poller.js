@@ -18,18 +18,24 @@
 const { until } = require("selenium-webdriver");
 const selectors = require("./selectors");
 const { clickQuoteRowAndWaitForDetail } = require("./quote-detail");
+const { runPostDetailQuoteFlow } = require("./quote-workflow");
 
+/** 새로고침 주기 — project.md의 “10초 간격”과 동일 */
 const POLL_INTERVAL_MS = 10_000;
+/** 목록 ul 등장까지 최대 대기 시간 */
 const LIST_TIMEOUT_MS = 10_000;
 
 let isPolling = false;
+/** requestStop 시 루프·sleep 이 종료되도록 하는 플래그 */
 let stopRequested = false;
+/** sleep을 즉시 끝내기 위한 해제 함수 슬롯 */
 let wakeUp = null;
 /** 가장 마지막으로 본 견적 요청 번호. start() 호출마다 리셋됩니다. */
 let lastRequestNumber = null;
 
 const CASHBACK_LABEL = selectors.requests.CASHBACK_REQUEST_LABEL;
 
+/** 인터벌 대기 — requestStop 시 wakeUp으로 즉시 해제 가능 */
 function sleep(ms) {
   return new Promise((resolve) => {
     const timer = setTimeout(() => {
@@ -116,7 +122,8 @@ async function pickFirstNonCashbackRequestNumber(driver, logger) {
   return { ok: false, reason: "no-eligible-row" };
 }
 
-async function pollOnce({ driver, logger }) {
+/** 한 번의 새로고침·목록 분석·필요 시 상세 진입 및 후속 분기까지 수행 */
+async function pollOnce({ driver, logger, settings }) {
   logger.info("페이지 새로고침");
   await driver.navigate().refresh();
 
@@ -148,15 +155,21 @@ async function pollOnce({ driver, logger }) {
   });
 
   await clickQuoteRowAndWaitForDetail(driver, targetLi, logger);
+  const outcome = await runPostDetailQuoteFlow(driver, settings ?? {}, logger);
+  // 상세 진입·분기까지 성공한 뒤에만 번호를 기록 → 실패 시 다음 주기에 재시도
   lastRequestNumber = topRequestNumber;
-  // TODO: selectors.detail.vehicleSection / quoteForm 기준으로 견적 종류·브랜드·차종 분기 → 입력 → Slack.
+  logger.info("견적 행 처리 분기 완료", { requestNumber: topRequestNumber, outcome });
 }
 
 /**
  * 폴링 루프 시작 (한 인스턴스만 동시 실행).
- * @param {{ driver: import("selenium-webdriver").WebDriver, logger: ReturnType<typeof import("./logger").createLogger> }} args
+ * @param {{
+ *   driver: import("selenium-webdriver").WebDriver;
+ *   logger: ReturnType<typeof import("./logger").createLogger>;
+ *   settings?: Record<string, unknown>;
+ * }} args
  */
-async function start({ driver, logger }) {
+async function start({ driver, logger, settings = {} }) {
   if (isPolling) {
     logger.warn("폴러가 이미 실행 중입니다.");
     return;
@@ -169,7 +182,7 @@ async function start({ driver, logger }) {
   try {
     while (!stopRequested) {
       try {
-        await pollOnce({ driver, logger });
+        await pollOnce({ driver, logger, settings });
       } catch (error) {
         if (stopRequested) break;
         logger.error("폴링 중 오류 — 다음 주기에 재시도", {

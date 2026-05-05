@@ -23,8 +23,10 @@ const PART_LABELS = [
   "기타",
 ];
 
+/** 입력 직후 저장 호출을 묶어 디스크·IPC 부하를 줄입니다. */
 const SAVE_DEBOUNCE_MS = 250;
 
+/** 푸터에 표시할 자동화 상태 한글 라벨 */
 const AUTOMATION_STATE_LABELS = {
   idle: "대기 중",
   starting: "시작 중…",
@@ -33,7 +35,9 @@ const AUTOMATION_STATE_LABELS = {
 };
 
 const form = document.getElementById("settings-form");
+/** 우상단 “저장됨” 등 표시 */
 const indicator = document.querySelector("[data-save-indicator]");
+/** 하단 자동화 상태 텍스트 */
 const statusEl = document.querySelector("[data-automation-status]");
 
 /** 토글 버튼 그룹을 PART_LABELS 기반으로 채워 넣습니다. */
@@ -107,15 +111,19 @@ function collectSettings() {
   return payload;
 }
 
+/** 설정 저장 UI 피드백 (data-state로 색 연동) */
 function setIndicator(state, text) {
   if (!indicator) return;
   indicator.dataset.state = state;
   indicator.textContent = text;
 }
 
+/** 연속 입력 중에는 타이머만 갱신하고, 저장 중이면 직후 한 번 더 flush 예약 */
 function createDebouncedSaver(delay) {
   let timer = null;
+  /** 저장 요청이 저장 진행 중에 들어왔는지 — 완료 후 재실행 */
   let pending = false;
+  /** saveSettings IPC가 동시에 두 번 나가지 않도록 락 */
   let inFlight = false;
 
   const flush = async () => {
@@ -148,6 +156,7 @@ function createDebouncedSaver(delay) {
 
 const scheduleSave = createDebouncedSaver(SAVE_DEBOUNCE_MS);
 
+/** 폼·토글·자동화 버튼 이벤트 연결 */
 function bindEvents() {
   form.addEventListener("input", scheduleSave);
 
@@ -166,6 +175,7 @@ function bindEvents() {
   const quitBtn = document.querySelector('[data-action="quit"]');
 
   startBtn?.addEventListener("click", async () => {
+    // 중복 클릭 방지 — 상태 전이 후 applyAutomationState에서 idle 시 다시 활성화
     startBtn.disabled = true;
     try {
       // 시작 직전 최신 입력 상태를 한 번 더 저장해 메인의 store와 동기화합니다.
@@ -196,6 +206,10 @@ function bindEvents() {
   });
 }
 
+/**
+ * 메인에서 온 상태에 맞춰 시작/정지 버튼·문구 동기화.
+ * idle일 때만 시작 가능, running일 때만 정지 가능.
+ */
 function applyAutomationState(state) {
   const startBtn = document.querySelector('[data-action="start"]');
   const stopBtn = document.querySelector('[data-action="stop"]');
@@ -207,6 +221,7 @@ function applyAutomationState(state) {
   }
 }
 
+/** 토글 생성 → 이벤트 등록 → 저장값 로드 → 자동화 로그·상태 구독 */
 async function init() {
   renderToggleGroups();
   bindEvents();

@@ -5,6 +5,7 @@
   box-sizing: border-box;
 }
 
+/* 테마 변수 — 다크 기준 배경·테두리·강조색 */
 :root {
   --bg: #0f1115;
   --bg-elevated: #161a22;
@@ -35,6 +36,7 @@ body {
   min-height: 100vh;
 }
 
+/* 상단 타이틀 + 저장 상태 */
 .app-header {
   display: flex;
   align-items: baseline;
@@ -71,6 +73,7 @@ body {
   color: var(--danger);
 }
 
+/* 설정 카드 스크롤 영역 */
 main {
   padding: 1.25rem 1.5rem 1.5rem;
   width: 100%;
@@ -79,6 +82,7 @@ main {
   flex: 1 1 auto;
 }
 
+/* 하단 고정 — 자동화 상태 + 시작/정지/종료 */
 .app-footer {
   position: sticky;
   bottom: 0;
@@ -92,6 +96,7 @@ main {
   flex-shrink: 0;
 }
 
+/* 공통 버튼 — variant는 btn-primary / btn-danger */
 .btn {
   appearance: none;
   border: 1px solid var(--border-strong);
@@ -161,6 +166,7 @@ main {
   color: var(--danger);
 }
 
+/* 카드 세로 스택 */
 #settings-form {
   display: flex;
   flex-direction: column;
@@ -242,6 +248,7 @@ textarea:focus {
   box-shadow: 0 0 0 2px var(--accent-soft);
 }
 
+/* 수리 불가 부위 등 토글 칩 그리드 */
 .toggle-grid {
   display: grid;
   gap: 0.5rem;

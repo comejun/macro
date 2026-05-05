@@ -11,6 +11,7 @@ const chrome = require("selenium-webdriver/chrome");
  * @returns {Promise<import("selenium-webdriver").WebDriver>}
  */
 async function createChromeDriver(options = {}) {
+  // userDataDir: 실제 Chrome 프로필 경로를 넘기면 쿠키·세션 재사용 가능
   const { headless = false, userDataDir } = options;
 
   const chromeOptions = new chrome.Options();

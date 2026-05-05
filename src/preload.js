@@ -4,6 +4,7 @@
  */
 const { contextBridge, ipcRenderer } = require("electron");
 
+/** IPC 이벤트 채널 구독 — 반환 함수로 ipcRenderer.off 해제 */
 const subscribe = (channel) => (callback) => {
   const listener = (_event, payload) => callback(payload);
   ipcRenderer.on(channel, listener);

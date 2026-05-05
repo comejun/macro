@@ -31,7 +31,7 @@ const CASHBACK_REQUEST_LABEL = "캐시백 요청";
 module.exports = {
    login: {
       id: By.css('input[name="loginId"]'),
-      // (2) aria-label — 반드시 대괄호로 감싸기
+      /** 속성 선택 시 반드시 대괄호: `[aria-label="…"]` */
       password: By.css('input[aria-label="비밀번호"]'),
       submit: By.css('button[type="submit"]'),
       /** 로그인 성공 판정용 — URL에 이 부분이 더 이상 포함되지 않으면 진입 성공으로 간주. */

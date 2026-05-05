@@ -13,6 +13,7 @@ const DETAIL_PANEL_TIMEOUT_MS = 15_000;
  */
 async function clickQuoteRowAndWaitForDetail(driver, targetLi, logger) {
   logger.info("견적 요청 행 클릭");
+  // 뷰포트 밖에 있으면 클릭이 실패할 수 있어 스크롤을 맞춥니다.
   await driver.executeScript(
     "arguments[0].scrollIntoView({ block: 'center', inline: 'nearest' });",
     targetLi
@@ -22,6 +23,7 @@ async function clickQuoteRowAndWaitForDetail(driver, targetLi, logger) {
   await driver.wait(until.elementIsEnabled(targetLi), DETAIL_PANEL_TIMEOUT_MS);
   await targetLi.click();
 
+  // SPA 전환 후 우측 패널 DOM이 붙을 때까지 순서대로 대기
   logger.info("상세 패널 로드 대기");
   await driver.wait(
     until.elementLocated(selectors.detail.scrollContainer),

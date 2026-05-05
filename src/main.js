@@ -29,7 +29,9 @@ const store = new Store({
   },
 });
 
+/** IPC 로그·상태를 보낼 대상 창 (없거나 파괴된 경우 스킵) */
 let mainWindow = null;
+/** before-quit 재진입으로 이중 stop 호출되는 것 방지 */
 let isQuitting = false;
 
 /** 활성 창의 webContents로 자동화 로그를 흘려보내는 로거를 만듭니다. */
@@ -43,6 +45,7 @@ function createPipedLogger() {
   });
 }
 
+// --- 설정 IPC (electron-store ↔ 렌더러) ---
 ipcMain.handle("settings:load", () => store.store);
 ipcMain.handle("settings:save", (_event, payload) => {
   if (payload && typeof payload === "object") {
@@ -51,6 +54,7 @@ ipcMain.handle("settings:save", (_event, payload) => {
   return store.store;
 });
 
+// --- Selenium 자동화 IPC — 매 호출마다 새 로거를 만들어 해당 세션 로그만 렌더러로 전달 ---
 ipcMain.handle("automation:start", () =>
   automation.start({ settings: store.store, logger: createPipedLogger() })
 );
