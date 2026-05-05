@@ -131,6 +131,7 @@ async function performQuoteMessaging(driver, logger, requestNumberRaw, settings 
   );
   await inputEl.sendKeys(Key.RETURN);
   await driver.sleep(600);
+  await driver.sleep(2000);
   logger.info("메시지 전송 — 단계 3/4: 견적 요청 번호 검색 입력/엔터 완료");
 
   logger.info("메시지 전송 — 단계 4/7: 검색 결과 목록에서 일치 행 탐색 시작");
@@ -157,7 +158,12 @@ async function performQuoteMessaging(driver, logger, requestNumberRaw, settings 
       await driver.executeScript("arguments[0].click();", li);
     }
     logger.info("메시지 스레드 행 클릭 완료", { requestNumber: needle });
+    const quotePageUrl = await driver.getCurrentUrl();
     logger.info("메시지 전송 — 단계 4/7: 검색 결과 목록에서 일치 행 탐색 완료");
+    logger.info("메시지 전송 — 견적 링크", {
+      requestNumber: needle,
+      quotePageUrl,
+    });
 
     logger.info("메시지 전송 — 단계 5/7: 하단 sticky 링크 버튼 클릭 시작");
     await click(driver, selectors.messages.threadOpenLinkButton, {
@@ -191,7 +197,10 @@ async function performQuoteMessaging(driver, logger, requestNumberRaw, settings 
     await driver.wait(until.elementLocated(selectors.requests.list), DEFAULT_TIMEOUT_MS);
     logger.info("메시지 전송 — 단계 7/7: 상단 첫 메뉴 클릭(신규 견적 복귀) 완료");
     logger.info("메시지 전송 단계 종료", { requestNumber: needle });
-    return;
+    return {
+      requestNumber: needle,
+      quotePageUrl,
+    };
   }
 
   throw new Error(
