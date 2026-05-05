@@ -1,0 +1,13 @@
+{
+  "name": "macro",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Cardoc partners automation (Electron)",
+  "main": "src/main.js",
+  "scripts": {
+    "start": "electron ."
+  },
+  "devDependencies": {
+    "electron": "^34.0.0"
+  }
+}
