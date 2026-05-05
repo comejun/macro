@@ -5,6 +5,8 @@
 const { app, BrowserWindow, ipcMain } = require("electron");
 const path = require("path");
 const Store = require("electron-store");
+const automation = require("./automation");
+const { createLogger } = require("./automation/logger");
 
 // 설정 영구 저장소 — userData 폴더 내 JSON으로 자동 저장됩니다.
 // TODO: 비밀번호는 향후 keytar 등 OS 키체인으로 분리 권장.
@@ -19,13 +21,27 @@ const store = new Store({
       importUninsured: "",
       importInsurance: "",
     },
-    blockedPartsA: [],
-    blockedPartsB: [],
+    blockedParts: [],
+    deleteParts: [],
     domesticBrandsCsv: "",
     nonRepairBrandsCsv: "",
     nonRepairModelsCsv: "",
   },
 });
+
+let mainWindow = null;
+let isQuitting = false;
+
+/** 활성 창의 webContents로 자동화 로그를 흘려보내는 로거를 만듭니다. */
+function createPipedLogger() {
+  return createLogger({
+    onMessage: (entry) => {
+      if (mainWindow && !mainWindow.isDestroyed()) {
+        mainWindow.webContents.send("automation:log", entry);
+      }
+    },
+  });
+}
 
 ipcMain.handle("settings:load", () => store.store);
 ipcMain.handle("settings:save", (_event, payload) => {
@@ -34,6 +50,14 @@ ipcMain.handle("settings:save", (_event, payload) => {
   }
   return store.store;
 });
+
+ipcMain.handle("automation:start", () =>
+  automation.start({ settings: store.store, logger: createPipedLogger() })
+);
+ipcMain.handle("automation:stop", () =>
+  automation.stop({ logger: createPipedLogger() })
+);
+ipcMain.handle("automation:status", () => automation.getState());
 
 // 렌더러의 종료 버튼에서 호출 — 모든 창을 닫고 앱을 종료합니다.
 ipcMain.handle("app:quit", () => {
@@ -58,9 +82,24 @@ function createWindow() {
   });
 
   win.loadFile(path.join(__dirname, "renderer", "index.html"));
+
+  win.on("closed", () => {
+    if (mainWindow === win) {
+      mainWindow = null;
+    }
+  });
+
+  mainWindow = win;
 }
 
 app.whenReady().then(() => {
+  // 자동화 상태 변화는 항상 활성 창에 푸시.
+  automation.onStateChange((state) => {
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.webContents.send("automation:state", state);
+    }
+  });
+
   createWindow();
 
   // macOS: 독 아이콘 클릭 시 창이 없으면 다시 만듭니다.
@@ -69,6 +108,16 @@ app.whenReady().then(() => {
       createWindow();
     }
   });
+});
+
+// 자동화가 실행 중이면 먼저 정리한 뒤 종료합니다.
+app.on("before-quit", async (event) => {
+  if (isQuitting) return;
+  if (automation.getState() === "idle") return;
+  event.preventDefault();
+  isQuitting = true;
+  await automation.stop({ logger: createPipedLogger() });
+  app.quit();
 });
 
 // Windows/Linux: 모든 창을 닫으면 앱 종료 (macOS는 메뉴바·독으로 앱이 남는 경우가 많음).

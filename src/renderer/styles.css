@@ -83,6 +83,7 @@ main {
   position: sticky;
   bottom: 0;
   display: flex;
+  align-items: center;
   justify-content: flex-end;
   gap: 0.5rem;
   padding: 0.75rem 1.5rem;
@@ -138,6 +139,26 @@ main {
 .btn-danger:hover {
   background: rgba(255, 107, 107, 0.12);
   border-color: var(--danger);
+}
+
+.automation-status {
+  margin-right: auto;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  min-height: 1em;
+}
+
+.automation-status[data-state="running"] {
+  color: var(--accent);
+}
+
+.automation-status[data-state="starting"],
+.automation-status[data-state="stopping"] {
+  color: var(--text-muted);
+}
+
+.automation-status[data-state="error"] {
+  color: var(--danger);
 }
 
 #settings-form {

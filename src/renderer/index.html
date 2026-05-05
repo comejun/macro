@@ -124,8 +124,16 @@
       </main>
 
       <footer class="app-footer">
+         <span
+            class="automation-status"
+            data-automation-status
+            aria-live="polite"
+         ></span>
          <button type="button" class="btn btn-primary" data-action="start">
             시작
+         </button>
+         <button type="button" class="btn" data-action="stop" disabled>
+            정지
          </button>
          <button type="button" class="btn btn-danger" data-action="quit">
             종료

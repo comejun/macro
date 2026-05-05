@@ -24,8 +24,16 @@ const PART_LABELS = [
 
 const SAVE_DEBOUNCE_MS = 250;
 
+const AUTOMATION_STATE_LABELS = {
+  idle: "대기 중",
+  starting: "시작 중…",
+  running: "실행 중",
+  stopping: "정지 중…",
+};
+
 const form = document.getElementById("settings-form");
 const indicator = document.querySelector("[data-save-indicator]");
+const statusEl = document.querySelector("[data-automation-status]");
 
 /** 토글 버튼 그룹을 PART_LABELS 기반으로 채워 넣습니다. */
 function renderToggleGroups() {
@@ -153,11 +161,27 @@ function bindEvents() {
   });
 
   const startBtn = document.querySelector('[data-action="start"]');
+  const stopBtn = document.querySelector('[data-action="stop"]');
   const quitBtn = document.querySelector('[data-action="quit"]');
 
-  startBtn?.addEventListener("click", () => {
-    // TODO: Selenium 자동화 흐름 진입점 — 추후 메인 프로세스로 IPC 호출 예정.
-    console.info("[macro] 시작 버튼 클릭");
+  startBtn?.addEventListener("click", async () => {
+    startBtn.disabled = true;
+    try {
+      // 시작 직전 최신 입력 상태를 한 번 더 저장해 메인의 store와 동기화합니다.
+      await window.macro.saveSettings(collectSettings());
+      await window.macro.startAutomation();
+    } catch (error) {
+      console.error("[macro] 자동화 시작 실패", error);
+    }
+  });
+
+  stopBtn?.addEventListener("click", async () => {
+    stopBtn.disabled = true;
+    try {
+      await window.macro.stopAutomation();
+    } catch (error) {
+      console.error("[macro] 자동화 정지 실패", error);
+    }
   });
 
   quitBtn?.addEventListener("click", async () => {
@@ -171,6 +195,17 @@ function bindEvents() {
   });
 }
 
+function applyAutomationState(state) {
+  const startBtn = document.querySelector('[data-action="start"]');
+  const stopBtn = document.querySelector('[data-action="stop"]');
+  if (startBtn) startBtn.disabled = state !== "idle";
+  if (stopBtn) stopBtn.disabled = state !== "running";
+  if (statusEl) {
+    statusEl.dataset.state = state;
+    statusEl.textContent = AUTOMATION_STATE_LABELS[state] ?? state;
+  }
+}
+
 async function init() {
   renderToggleGroups();
   bindEvents();
@@ -181,6 +216,26 @@ async function init() {
   } catch (error) {
     console.error("[macro] 설정 로드 실패", error);
     setIndicator("error", "불러오기 실패");
+  }
+
+  window.macro.onAutomationLog((entry) => {
+    // 추후 로그 패널이 추가되면 DOM에 누적. 지금은 콘솔로만 흘립니다.
+    const writer = entry.level === "error" ? console.error : console.log;
+    if (entry.meta !== undefined) {
+      writer(`[automation:${entry.level}]`, entry.message, entry.meta);
+    } else {
+      writer(`[automation:${entry.level}]`, entry.message);
+    }
+  });
+
+  window.macro.onAutomationState(applyAutomationState);
+
+  try {
+    const initialState = await window.macro.getAutomationStatus();
+    applyAutomationState(initialState ?? "idle");
+  } catch (error) {
+    console.error("[macro] 자동화 상태 조회 실패", error);
+    applyAutomationState("idle");
   }
 }
 

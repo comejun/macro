@@ -11,6 +11,7 @@
     "electron": "^34.0.0"
   },
   "dependencies": {
-    "electron-store": "^8.2.0"
+    "electron-store": "^8.2.0",
+    "selenium-webdriver": "^4.43.0"
   }
 }
