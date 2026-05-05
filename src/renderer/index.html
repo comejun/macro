@@ -1,0 +1,145 @@
+<!doctype html>
+<html lang="ko">
+   <head>
+      <meta charset="UTF-8" />
+      <!-- 인라인 스크립트·외부 리소스 출처 제한 — 허용 목록은 필요에 맞게 조정 -->
+      <meta
+         http-equiv="Content-Security-Policy"
+         content="default-src 'self'; script-src 'self'"
+      />
+      <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+      <title>macro</title>
+      <link rel="stylesheet" href="./styles.css" />
+   </head>
+   <body>
+      <header class="app-header">
+         <h1>macro 설정</h1>
+         <span
+            class="save-indicator"
+            data-save-indicator
+            aria-live="polite"
+         ></span>
+      </header>
+
+      <main>
+         <form id="settings-form" autocomplete="off">
+            <section class="card">
+               <h2>카닥 계정</h2>
+               <div class="grid grid-2">
+                  <label class="field">
+                     <span>아이디</span>
+                     <input type="text" name="cardocId" autocomplete="off" />
+                  </label>
+                  <label class="field">
+                     <span>비밀번호</span>
+                     <input
+                        type="password"
+                        name="cardocPassword"
+                        autocomplete="new-password"
+                     />
+                  </label>
+               </div>
+            </section>
+
+            <section class="card">
+               <h2>견적 금액</h2>
+               <div class="grid grid-2">
+                  <label class="field">
+                     <span>국산차 비보험</span>
+                     <input
+                        type="text"
+                        inputmode="numeric"
+                        name="prices.domesticUninsured"
+                     />
+                  </label>
+                  <label class="field">
+                     <span>국산차 보험</span>
+                     <input
+                        type="text"
+                        inputmode="numeric"
+                        name="prices.domesticInsurance"
+                     />
+                  </label>
+                  <label class="field">
+                     <span>수입차 비보험</span>
+                     <input
+                        type="text"
+                        inputmode="numeric"
+                        name="prices.importUninsured"
+                     />
+                  </label>
+                  <label class="field">
+                     <span>수입차 보험</span>
+                     <input
+                        type="text"
+                        inputmode="numeric"
+                        name="prices.importInsurance"
+                     />
+                  </label>
+               </div>
+            </section>
+
+            <section class="card">
+               <h2>수리 불가 부위 <span class="muted"></span></h2>
+               <p class="hint">중복 선택 가능합니다. 다시 누르면 해제됩니다.</p>
+               <div class="toggle-grid" data-toggle-group="blockedParts"></div>
+            </section>
+
+            <section class="card">
+               <h2>삭제할 부위 <span class="muted"></span></h2>
+               <p class="hint">중복 선택 가능합니다. 다시 누르면 해제됩니다.</p>
+               <div class="toggle-grid" data-toggle-group="deleteParts"></div>
+            </section>
+
+            <section class="card">
+               <h2>국산차 기준 브랜드</h2>
+               <p class="hint">쉼표(,)로 구분해 입력하세요.</p>
+               <textarea
+                  name="domesticBrandsCsv"
+                  rows="2"
+                  placeholder="예: 현대, 기아, 제네시스"
+               ></textarea>
+            </section>
+
+            <section class="card">
+               <h2>수리 불가 브랜드</h2>
+               <p class="hint">쉼표(,)로 구분해 입력하세요.</p>
+               <textarea
+                  name="nonRepairBrandsCsv"
+                  rows="2"
+                  placeholder="예: 롤스로이스, 벤틀리"
+               ></textarea>
+            </section>
+
+            <section class="card">
+               <h2>수리 불가 차종</h2>
+               <p class="hint">쉼표(,)로 구분해 입력하세요.</p>
+               <textarea
+                  name="nonRepairModelsCsv"
+                  rows="3"
+                  placeholder="예: 모델명1, 모델명2"
+               ></textarea>
+            </section>
+         </form>
+      </main>
+
+      <footer class="app-footer">
+         <span
+            class="automation-status"
+            data-automation-status
+            aria-live="polite"
+         ></span>
+         <button type="button" class="btn btn-primary" data-action="start">
+            시작
+         </button>
+         <button type="button" class="btn" data-action="stop" disabled>
+            정지
+         </button>
+         <button type="button" class="btn btn-danger" data-action="quit">
+            종료
+         </button>
+      </footer>
+
+      <script src="./renderer.js"></script>
+   </body>
+</html>
