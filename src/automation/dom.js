@@ -74,6 +74,45 @@ async function typeInto(driver, locator, value, options = {}) {
 }
 
 /**
+ * 이미 찾은 input 요소에 `typeInto`와 동일한 방식으로 값을 넣습니다.
+ *
+ * @param {import("selenium-webdriver").WebDriver} driver
+ * @param {import("selenium-webdriver").WebElement} element
+ * @param {string} value
+ * @param {{ timeout?: number, mask?: boolean }} [options]
+ */
+async function typeIntoElement(driver, element, value, options = {}) {
+  const { timeout = DEFAULT_TIMEOUT_MS, mask = false } = options;
+
+  await driver.wait(until.elementIsVisible(element), timeout);
+  await driver.wait(until.elementIsEnabled(element), timeout);
+
+  await element.click();
+  await element.clear();
+  const selectAllKey = process.platform === "darwin" ? Key.COMMAND : Key.CONTROL;
+  await element.sendKeys(Key.chord(selectAllKey, "a"));
+  await element.sendKeys(Key.DELETE);
+
+  await element.sendKeys(value);
+
+  const actual = (await element.getAttribute("value")) ?? "";
+
+  if (mask) {
+    if (actual.length !== value.length) {
+      throw new Error(
+        `입력 검증 실패 (expected length=${value.length}, actual length=${actual.length}, expected shape=${describeShape(value)}, actual shape=${describeShape(actual)})`
+      );
+    }
+    return "*".repeat(value.length);
+  }
+
+  if (actual !== value) {
+    throw new Error(`입력 검증 실패 (expected="${value}", actual="${actual}")`);
+  }
+  return actual;
+}
+
+/**
  * 셀렉터 위치 요소를 클릭합니다.
  * @param {import("selenium-webdriver").WebDriver} driver
  * @param {import("selenium-webdriver").Locator} locator
@@ -90,6 +129,7 @@ async function click(driver, locator, options = {}) {
 
 module.exports = {
   typeInto,
+  typeIntoElement,
   click,
   DEFAULT_TIMEOUT_MS,
 };

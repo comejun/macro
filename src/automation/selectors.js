@@ -17,11 +17,48 @@ const DETAIL_SCROLL_CSS =
 const DETAIL_VEHICLE_SECTION_CSS = `${DETAIL_SCROLL_CSS} > div > section > section`;
 /** 견적 작성 폼 */
 const DETAIL_QUOTE_FORM_CSS = `${DETAIL_SCROLL_CSS} > div > form`;
+/**
+ * 견적 폼 내 부위 목록 ul — XPath (브라우저 복사 경로 기준 `…/form/div[3]/ul`).
+ * CSS `nth-child`와 번호가 어긋날 수 있어 XPath를 단일 소스로 둡니다.
+ */
+const QUOTE_FORM_PARTS_UL_XPATH =
+  '//*[@id="root"]/main/div[1]/div/div/div/div[2]/div/form/div[3]/ul';
+/**
+ * 각 부위 `li` 기준: deleteParts와 비교할 텍스트 (`…/li[n]/div[1]/div[1]`에 해당).
+ * XPath의 `/text()`는 Selenium에서 요소 조회 후 `getText()`로 대체합니다.
+ */
+const QUOTE_PART_ROW_LABEL_RELATIVE_XPATH_FROM_LI = "./div[1]/div[1]";
+/** 각 부위 `li` 기준: 해당 행 삭제 버튼 */
+const QUOTE_PART_ROW_REMOVE_BTN_RELATIVE_TO_LI =
+  "div.flex.justify-between.items-center.py-2\\.5 > div:nth-child(2) > button";
+
+/** 견적 폼 부위 목록 ul — 수리방법 입력 단계(form `div:nth-child(4) > ul`, 사용자 제공 CSS) */
+const QUOTE_FORM_PARTS_UL_CSS_REPAIR_METHOD =
+  `${DETAIL_QUOTE_FORM_CSS} > div:nth-child(4) > ul`;
+/** 각 부위 `li` 내 수리방법(Radix) 트리거 버튼 */
+const QUOTE_PART_REPAIR_METHOD_TRIGGER_BTN_RELATIVE =
+  "div.pl-9.pr-12 > div > div > button";
+/** 각 부위 `li` 내 수리 금액 input */
+const QUOTE_PART_REPAIR_PRICE_INPUT_RELATIVE =
+  "div.pl-9.pr-12 > div > div > div > input";
+/** 각 부위 `li` 내 부품 플로우 — `ul` 직계 트리거 버튼 */
+const QUOTE_PART_PARTS_MENU_BTN_RELATIVE = "ul > button";
+/** 각 부위 `li` 내 부품 플로우 — `ul > li` 행의 확인 등 후속 버튼 */
+const QUOTE_PART_PARTS_ROW_CONFIRM_BTN_RELATIVE =
+  "ul > li > div:nth-child(4) > button";
+
+/** 견적 폼 하단(mt-10) — 부위 등급 입력란이 들어 있는 래퍼 div (`… > div > input`) */
+const QUOTE_FORM_TIER_INPUT_WRAPPER_CSS = `${DETAIL_QUOTE_FORM_CSS} > div.flex.mt-10.justify-between.items-center > div.flex.gap-x-2 > div > div`;
 
 /** 상세 우측 패널 — 브랜드·차종이 적힌 한 줄 (p) */
 const DETAIL_BRAND_MODEL_P_CSS = `${DETAIL_SCROLL_CSS} > div > section > section > div.flex.justify-between.items-start > div.w-\\[680px\\] > section > p`;
 /** 상세 — 수리 부위 목록이 쉼표로 구분된 span */
 const DETAIL_REPAIR_PARTS_SPAN_CSS = `${DETAIL_SCROLL_CSS} > div > section.px-4.py-6.flex.flex-col.gap-y-2 > section > div.flex.gap-10 > section.w-105.flex.flex-col.gap-2 > div:nth-child(2) > span.text-blue-gray-800`;
+/**
+ * 상세 차량 블록 — 보험/비보험 표시 span (`비보험 수리` 등).
+ * 브랜드·차종 `p`와 같은 `section > section` 트리의 `div.flex.gap-10` 기준 첫 칼럼.
+ */
+const DETAIL_QUOTE_INSURANCE_CATEGORY_SPAN_CSS = `${DETAIL_SCROLL_CSS} > div > section > section > div.flex.gap-10 > section.w-105.flex.flex-col.gap-2 > div:nth-child(1) > span.text-blue-gray-800`;
 
 // ul 직계 li마다 아래 상대 셀렉터로 유형(p)·견적 번호(span)를 찾습니다.
 // 캐시백 요청(p 텍스트 === "캐시백 요청")이면 같은 순서의 다음 li를 봅니다.
@@ -80,8 +117,27 @@ module.exports = {
       scrollContainer: By.css(DETAIL_SCROLL_CSS),
       vehicleSection: By.css(DETAIL_VEHICLE_SECTION_CSS),
       quoteForm: By.css(DETAIL_QUOTE_FORM_CSS),
+      /** 견적 작성 폼 — 부위 행 목록 ul (XPath) */
+      quoteFormPartsList: By.xpath(QUOTE_FORM_PARTS_UL_XPATH),
+      /** 각 `li`에서 라벨 노드를 찾을 상대 XPath 문자열 */
+      quotePartRowLabelRelativeXPath: QUOTE_PART_ROW_LABEL_RELATIVE_XPATH_FROM_LI,
+      quotePartRowRemoveBtnRelative: QUOTE_PART_ROW_REMOVE_BTN_RELATIVE_TO_LI,
+      /**
+       * 부위 목록 ul — 수리방법 단계(deleteParts용 XPath ul과 블록 인덱스가 다를 수 있음).
+       */
+      quoteFormPartsListRepairMethod: By.css(QUOTE_FORM_PARTS_UL_CSS_REPAIR_METHOD),
+      quotePartRepairMethodTriggerBtnRelative:
+        QUOTE_PART_REPAIR_METHOD_TRIGGER_BTN_RELATIVE,
+      quotePartRepairPriceInputRelative: QUOTE_PART_REPAIR_PRICE_INPUT_RELATIVE,
+      quotePartPartsMenuBtnRelative: QUOTE_PART_PARTS_MENU_BTN_RELATIVE,
+      quotePartPartsRowConfirmBtnRelative:
+        QUOTE_PART_PARTS_ROW_CONFIRM_BTN_RELATIVE,
+      /** 부위 등급(react-aria 등) 입력 래퍼 — 내부 `input` 조회 */
+      quoteFormTierInputWrapper: By.css(QUOTE_FORM_TIER_INPUT_WRAPPER_CSS),
       /** 브랜드 + 차종 텍스트 */
       brandAndModelLine: By.css(DETAIL_BRAND_MODEL_P_CSS),
+      /** 보험/비보험 구분 텍스트 span */
+      quoteInsuranceCategorySpan: By.css(DETAIL_QUOTE_INSURANCE_CATEGORY_SPAN_CSS),
       /** 수리 부위 (쉼표 구분) */
       repairPartsSpan: By.css(DETAIL_REPAIR_PARTS_SPAN_CSS),
    },

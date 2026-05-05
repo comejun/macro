@@ -7,6 +7,7 @@ const {
   evaluateRepairEligibilityStructured,
 } = require("./repair-eligibility");
 const { performQuoteCancellation } = require("./cancellation");
+const { performQuoteDraft } = require("./quote-draft");
 
 /** 로그·Slack 등에 그대로 넣기 좋은 한 줄 요약 */
 const KIND_LABEL_KO = {
@@ -100,9 +101,7 @@ async function handleQuoteCancellation(driver, logger, reasons, summaryLinesKo) 
  * @param {Record<string, unknown>} settings
  */
 async function handleQuoteDraft(driver, logger, settings) {
-  void driver; // selectors.detail.quoteForm 조작 시 사용 예정
-  void settings; // 견적 금액·부위 설정 반영 시 사용 예정
-  logger.info("TODO: 견적 작성 폼 자동화 — selectors.detail.quoteForm 내부 입력·라디오·전송", {});
+  await performQuoteDraft(driver, logger, settings);
 }
 
 module.exports = {

@@ -26,6 +26,10 @@ const store = new Store({
     domesticBrandsCsv: "",
     nonRepairBrandsCsv: "",
     nonRepairModelsCsv: "",
+    /** 부위·부품 관련 고정 문구 (자동화에서 사용 예정) */
+    partsText: "",
+    /** 견적 발송 후 안내 등 후속 텍스트 */
+    quoteSentFollowUpText: "",
   },
 });
 
